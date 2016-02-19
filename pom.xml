@@ -28,6 +28,7 @@
   <artifactId>druid-caffeine-cache</artifactId>
   <name>druid-caffeine-cache</name>
   <description>druid-caffeine-cache</description>
+  <version>0.8.3.1-SNAPSHOT</version>
 
   <parent>
     <groupId>io.druid</groupId>
