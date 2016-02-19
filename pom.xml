@@ -30,6 +30,22 @@
   <description>druid-caffeine-cache</description>
   <version>0.8.3.1-SNAPSHOT</version>
 
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Charles Allen</name>
+      <email>charles.allen@metamarkets.com</email>
+      <organization>Metamarkets Group Inc.</organization>
+      <organizationUrl>https://www.metamarkets.com</organizationUrl>
+    </developer>
+  </developers>
+
   <parent>
     <groupId>io.druid</groupId>
     <artifactId>druid</artifactId>
