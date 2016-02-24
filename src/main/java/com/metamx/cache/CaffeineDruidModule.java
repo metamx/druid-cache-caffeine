@@ -19,8 +19,8 @@
 
 package com.metamx.cache;
 
-import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.Module;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Binder;
 import io.druid.initialization.DruidModule;
@@ -39,25 +39,9 @@ public class CaffeineDruidModule implements DruidModule
   @Override
   public List<? extends Module> getJacksonModules()
   {
-    return ImmutableList.of(new Module()
-    {
-      @Override
-      public String getModuleName()
-      {
-        return "DruidCaffeineCache-" + System.identityHashCode(this);
-      }
-
-      @Override
-      public Version version()
-      {
-        return Version.unknownVersion();
-      }
-
-      @Override
-      public void setupModule(SetupContext context)
-      {
-        context.registerSubtypes(CaffeineCacheProvider.class);
-      }
-    });
+    return ImmutableList.of(
+        new SimpleModule("DruidCaffeineCache-" + System.identityHashCode(this))
+            .registerSubtypes(CaffeineCacheProvider.class)
+    );
   }
 }
