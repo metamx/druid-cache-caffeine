@@ -31,6 +31,7 @@ import com.metamx.common.lifecycle.Lifecycle;
 import io.druid.client.cache.Cache;
 import io.druid.client.cache.CacheProvider;
 import io.druid.client.cache.CacheStats;
+import io.druid.client.cache.MapCache;
 import io.druid.guice.GuiceInjectors;
 import io.druid.guice.JsonConfigProvider;
 import io.druid.guice.ManageLifecycle;
@@ -188,6 +189,36 @@ public class CaffeineCacheTest
 
     result = cache.getBulk(Lists.<Cache.NamedKey>newArrayList());
     Assert.assertEquals(result.size(), 0);
+  }
+
+  @Test
+  public void testSimpleDelegate()
+  {
+    final Cache mapCache = MapCache.create(1_000_000);
+    final CaffeineCache caffeineCache = CaffeineCache.create(new CaffeineCacheConfig()
+    {
+      @Override
+      public long getMaxSize()
+      {
+        return 1_000_000L;
+      }
+
+      @Override
+      public Cache getDelegateCache()
+      {
+        return mapCache;
+      }
+    });
+    final Cache.NamedKey key = new Cache.NamedKey("the", HI);
+    Assert.assertNull(mapCache.get(key));
+    Assert.assertNull(caffeineCache.get(key));
+    put(caffeineCache, key, 10);
+    Assert.assertEquals(10, get(mapCache, key));
+    Assert.assertEquals(10, get(caffeineCache, key));
+
+    put(caffeineCache, key, 20);
+    Assert.assertEquals(20, get(mapCache, key));
+    Assert.assertEquals(20, get(caffeineCache, key));
   }
 
   public int get(Cache cache, Cache.NamedKey key)

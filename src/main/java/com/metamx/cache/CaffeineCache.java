@@ -19,8 +19,10 @@
 
 package com.metamx.cache;
 
-import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Weigher;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -28,23 +30,22 @@ import com.google.common.primitives.Ints;
 import com.metamx.common.logger.Logger;
 import com.metamx.emitter.service.ServiceEmitter;
 import com.metamx.emitter.service.ServiceMetricEvent;
+import io.druid.client.cache.Cache;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
-import org.apache.commons.codec.digest.DigestUtils;
 
+import javax.annotation.Nonnull;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-public class CaffeineCache implements io.druid.client.cache.Cache
+public class CaffeineCache implements Cache
 {
   private static final Logger log = new Logger(CaffeineCache.class);
-  private final Cache<String, byte[]> cache;
+  private final LoadingCache<NamedKey, byte[]> cache;
   private final AtomicReference<CacheStats> priorStats = new AtomicReference<>(null);
-
+  private final Cache delegateCache;
 
   public static CaffeineCache create(final CaffeineCacheConfig config)
   {
@@ -54,58 +55,79 @@ public class CaffeineCache implements io.druid.client.cache.Cache
           .expireAfterAccess(config.getExpiration(), TimeUnit.MILLISECONDS);
     }
     if (config.getMaxSize() >= 0) {
-      builder = builder
-          .maximumSize(config.getMaxSize())
-          .maximumWeight(config.getMaxSize());
+      builder = builder.maximumWeight(config.getMaxSize());
+      builder.weigher(new Weigher<NamedKey, byte[]>()
+      {
+        @Override
+        public int weigh(@Nonnull NamedKey key, @Nonnull byte[] value)
+        {
+          return value.length;
+        }
+      });
     }
-    return new CaffeineCache(builder.<String, byte[]>build());
+
+    final Cache delegateCache = config.getDelegateCache();
+    final CacheLoader<NamedKey, byte[]> cacheLoader;
+    if (delegateCache != null) {
+      cacheLoader = new CacheLoader<NamedKey, byte[]>()
+      {
+        @Override
+        public byte[] load(@Nonnull NamedKey key) throws Exception
+        {
+          return delegateCache.get(key);
+        }
+
+        @Override
+        public Map<NamedKey, byte[]> loadAll(@Nonnull Iterable<? extends NamedKey> keys) throws Exception
+        {
+          final Iterable<NamedKey> keys0 = (Iterable<NamedKey>) keys;
+          return Maps.transformValues(delegateCache.getBulk(keys0), CaffeineCache::serialize);
+        }
+      };
+    } else {
+      cacheLoader = new CacheLoader<NamedKey, byte[]>()
+      {
+        @Override
+        public byte[] load(@Nonnull NamedKey key) throws Exception
+        {
+          return null;
+        }
+
+        @Override
+        public Map<NamedKey, byte[]> loadAll(@Nonnull Iterable<? extends NamedKey> keys) throws Exception
+        {
+          return ImmutableMap.of();
+        }
+      };
+    }
+    return new CaffeineCache(builder.build(cacheLoader), delegateCache);
   }
 
-  public CaffeineCache(final Cache<String, byte[]> cache)
+  public CaffeineCache(final LoadingCache<NamedKey, byte[]> cache, final Cache delegateCache)
   {
     this.cache = cache;
+    this.delegateCache = delegateCache;
   }
 
   @Override
   public byte[] get(NamedKey key)
   {
-    final String itemKey = computeKeyHash(key);
-    return deserialize(cache.getIfPresent(itemKey));
+    return deserialize(cache.get(key));
   }
 
   @Override
   public void put(NamedKey key, byte[] value)
   {
-    final String itemKey = computeKeyHash(key);
-    cache.put(itemKey, serialize(value));
+    cache.put(key, serialize(value));
+    if (delegateCache != null) {
+      delegateCache.put(key, value);
+    }
   }
 
   @Override
   public Map<NamedKey, byte[]> getBulk(Iterable<NamedKey> keys)
   {
-    final Map<String, NamedKey> keyLookup = Maps.uniqueIndex(keys, CaffeineCache::computeKeyHash);
-
-    // Sometimes broker passes empty keys list to getBulk()
-    if (keyLookup.size() == 0) {
-      return ImmutableMap.of();
-    }
-
-    final Map<NamedKey, byte[]> results = Maps.newHashMap();
-    final Map<String, byte[]> cachedVals = cache.getAllPresent(
-        StreamSupport
-            .stream(keys.spliterator(), false)
-            .map(CaffeineCache::computeKeyHash)
-            .collect(Collectors.toList())
-    );
-
-    // Hash join
-    for (String key : cachedVals.keySet()) {
-      final byte[] val = deserialize(cachedVals.get(key));
-      if (val != null) {
-        results.put(keyLookup.get(key), val);
-      }
-    }
-    return results;
+    return Maps.transformValues(cache.getAllPresent(keys), CaffeineCache::deserialize);
   }
 
   // This is completely racy with put. Any values missed should be evicted later anyways. So no worries.
@@ -120,6 +142,9 @@ public class CaffeineCache implements io.druid.client.cache.Cache
      }
      }
      */
+    if (delegateCache != null) {
+      delegateCache.close(namespace);
+    }
   }
 
   @Override
@@ -166,18 +191,22 @@ public class CaffeineCache implements io.druid.client.cache.Cache
           "Multiple monitors on the same cache causing race conditions and unreliable stats reporting"
       );
     }
+
+    if (delegateCache != null) {
+      delegateCache.doMonitor(emitter);
+    }
   }
 
-  private final LZ4Factory factory = LZ4Factory.fastestInstance();
+  private static final LZ4Factory FACTORY = LZ4Factory.fastestInstance();
 
-  private byte[] deserialize(byte[] bytes)
+  private static byte[] deserialize(byte[] bytes)
   {
     if (bytes == null) {
       return null;
     }
     final int decompressedLen = ByteBuffer.wrap(bytes).getInt();
     final byte[] out = new byte[decompressedLen];
-    final int bytesRead = factory.fastDecompressor().decompress(bytes, Ints.BYTES, out, 0, out.length);
+    final int bytesRead = FACTORY.fastDecompressor().decompress(bytes, Ints.BYTES, out, 0, out.length);
     if (bytesRead != bytes.length - Ints.BYTES) {
       if (log.isDebugEnabled()) {
         log.debug("Bytes read [%s] does not equal expected bytes read [%s]", bytesRead, bytes.length - Ints.BYTES);
@@ -186,9 +215,9 @@ public class CaffeineCache implements io.druid.client.cache.Cache
     return out;
   }
 
-  private byte[] serialize(byte[] value)
+  private static byte[] serialize(byte[] value)
   {
-    final LZ4Compressor compressor = factory.fastCompressor();
+    final LZ4Compressor compressor = FACTORY.fastCompressor();
     final int len = compressor.maxCompressedLength(value.length);
     final byte[] out = new byte[len];
     final int compressedSize = compressor.compress(value, 0, value.length, out, 0);
@@ -196,16 +225,5 @@ public class CaffeineCache implements io.druid.client.cache.Cache
                      .putInt(value.length)
                      .put(out, 0, compressedSize)
                      .array();
-  }
-
-  public static String computeKeyHash(final NamedKey key)
-  {
-    return String.format("%s:%s", computeNamespaceHash(key.namespace), DigestUtils.sha1Hex(key.key));
-  }
-
-  // So people can't do weird things with namespace strings
-  public static String computeNamespaceHash(final String namespace)
-  {
-    return DigestUtils.sha1Hex(namespace);
   }
 }

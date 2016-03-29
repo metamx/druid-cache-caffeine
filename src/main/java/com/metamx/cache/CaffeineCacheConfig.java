@@ -20,6 +20,7 @@
 package com.metamx.cache;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.druid.client.cache.Cache;
 
 public class CaffeineCacheConfig
 {
@@ -29,6 +30,9 @@ public class CaffeineCacheConfig
   @JsonProperty
   private long maxSize = -1;
 
+  @JsonProperty
+  private Cache delegateCache = null;
+
   public long getExpiration()
   {
     return expiration;
@@ -37,5 +41,10 @@ public class CaffeineCacheConfig
   public long getMaxSize()
   {
     return maxSize;
+  }
+
+  public Cache getDelegateCache()
+  {
+    return delegateCache;
   }
 }
