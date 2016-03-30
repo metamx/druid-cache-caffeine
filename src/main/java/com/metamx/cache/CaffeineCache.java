@@ -22,7 +22,6 @@ package com.metamx.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Ints;
 import com.metamx.common.logger.Logger;
@@ -36,13 +35,11 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public class CaffeineCache implements io.druid.client.cache.Cache
 {
   private static final Logger log = new Logger(CaffeineCache.class);
-  private final Cache<String, byte[]> cache;
+  private final Cache<NamedKey, byte[]> cache;
   private final AtomicReference<CacheStats> priorStats = new AtomicReference<>(null);
 
 
@@ -58,10 +55,10 @@ public class CaffeineCache implements io.druid.client.cache.Cache
           .maximumSize(config.getMaxSize())
           .maximumWeight(config.getMaxSize());
     }
-    return new CaffeineCache(builder.<String, byte[]>build());
+    return new CaffeineCache(builder.<NamedKey, byte[]>build());
   }
 
-  public CaffeineCache(final Cache<String, byte[]> cache)
+  public CaffeineCache(final Cache<NamedKey, byte[]> cache)
   {
     this.cache = cache;
   }
@@ -69,43 +66,19 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   @Override
   public byte[] get(NamedKey key)
   {
-    final String itemKey = computeKeyHash(key);
-    return deserialize(cache.getIfPresent(itemKey));
+    return deserialize(cache.getIfPresent(key));
   }
 
   @Override
   public void put(NamedKey key, byte[] value)
   {
-    final String itemKey = computeKeyHash(key);
-    cache.put(itemKey, serialize(value));
+    cache.put(key, serialize(value));
   }
 
   @Override
   public Map<NamedKey, byte[]> getBulk(Iterable<NamedKey> keys)
   {
-    final Map<String, NamedKey> keyLookup = Maps.uniqueIndex(keys, CaffeineCache::computeKeyHash);
-
-    // Sometimes broker passes empty keys list to getBulk()
-    if (keyLookup.size() == 0) {
-      return ImmutableMap.of();
-    }
-
-    final Map<NamedKey, byte[]> results = Maps.newHashMap();
-    final Map<String, byte[]> cachedVals = cache.getAllPresent(
-        StreamSupport
-            .stream(keys.spliterator(), false)
-            .map(CaffeineCache::computeKeyHash)
-            .collect(Collectors.toList())
-    );
-
-    // Hash join
-    for (String key : cachedVals.keySet()) {
-      final byte[] val = deserialize(cachedVals.get(key));
-      if (val != null) {
-        results.put(keyLookup.get(key), val);
-      }
-    }
-    return results;
+    return Maps.transformValues(cache.getAllPresent(keys), this::deserialize);
   }
 
   // This is completely racy with put. Any values missed should be evicted later anyways. So no worries.
@@ -196,16 +169,5 @@ public class CaffeineCache implements io.druid.client.cache.Cache
                      .putInt(value.length)
                      .put(out, 0, compressedSize)
                      .array();
-  }
-
-  public static String computeKeyHash(final NamedKey key)
-  {
-    return String.format("%s:%s", computeNamespaceHash(key.namespace), DigestUtils.sha1Hex(key.key));
-  }
-
-  // So people can't do weird things with namespace strings
-  public static String computeNamespaceHash(final String namespace)
-  {
-    return DigestUtils.sha1Hex(namespace);
   }
 }
