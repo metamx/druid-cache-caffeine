@@ -29,6 +29,7 @@ import com.metamx.emitter.service.ServiceEmitter;
 import com.metamx.emitter.service.ServiceMetricEvent;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import java.nio.ByteBuffer;
@@ -142,6 +143,8 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   }
 
   private final LZ4Factory factory = LZ4Factory.fastestInstance();
+  private final LZ4FastDecompressor decompressor = factory.fastDecompressor();
+  private final LZ4Compressor compressor = factory.fastCompressor();
 
   private byte[] deserialize(byte[] bytes)
   {
@@ -150,7 +153,7 @@ public class CaffeineCache implements io.druid.client.cache.Cache
     }
     final int decompressedLen = ByteBuffer.wrap(bytes).getInt();
     final byte[] out = new byte[decompressedLen];
-    final int bytesRead = factory.fastDecompressor().decompress(bytes, Ints.BYTES, out, 0, out.length);
+    final int bytesRead = decompressor.decompress(bytes, Ints.BYTES, out, 0, out.length);
     if (bytesRead != bytes.length - Ints.BYTES) {
       if (log.isDebugEnabled()) {
         log.debug("Bytes read [%s] does not equal expected bytes read [%s]", bytesRead, bytes.length - Ints.BYTES);
@@ -161,7 +164,6 @@ public class CaffeineCache implements io.druid.client.cache.Cache
 
   private byte[] serialize(byte[] value)
   {
-    final LZ4Compressor compressor = factory.fastCompressor();
     final int len = compressor.maxCompressedLength(value.length);
     final byte[] out = new byte[len];
     final int compressedSize = compressor.compress(value, 0, value.length, out, 0);
