@@ -26,7 +26,7 @@
   <artifactId>druid-caffeine-cache</artifactId>
   <name>druid-caffeine-cache</name>
   <description>druid-caffeine-cache</description>
-  <version>0.8.3.3</version>
+  <version>0.8.3.4-SNAPSHOT</version>
 
   <licenses>
     <license>
@@ -54,7 +54,7 @@
     <connection>scm:git:ssh://git@github.com/metamx/druid-cache-caffeine.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metamx/druid-cache-caffeine.git</developerConnection>
     <url>https://github.com/metamx/druid-cache-caffeine.git</url>
-    <tag>druid-caffeine-cache-0.8.3.3</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <dependencies>
