@@ -171,12 +171,7 @@ public class CaffeineCache implements io.druid.client.cache.Cache
     }
     final int decompressedLen = ByteBuffer.wrap(bytes).getInt();
     final byte[] out = new byte[decompressedLen];
-    final int bytesRead = decompressor.decompress(bytes, Ints.BYTES, out, 0, out.length);
-    if (bytesRead != bytes.length - Ints.BYTES) {
-      if (log.isDebugEnabled()) {
-        log.debug("Bytes read [%s] does not equal expected bytes read [%s]", bytesRead, bytes.length - Ints.BYTES);
-      }
-    }
+    decompressor.decompress(bytes, Ints.BYTES, out, 0, out.length);
     return out;
   }
 
