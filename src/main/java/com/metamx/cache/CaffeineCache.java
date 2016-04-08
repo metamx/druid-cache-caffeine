@@ -22,7 +22,9 @@ package com.metamx.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Chars;
 import com.google.common.primitives.Ints;
 import com.metamx.common.logger.Logger;
 import com.metamx.emitter.service.ServiceEmitter;
@@ -30,33 +32,47 @@ import com.metamx.emitter.service.ServiceMetricEvent;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
-import org.apache.commons.codec.digest.DigestUtils;
 
+import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CaffeineCache implements io.druid.client.cache.Cache
 {
   private static final Logger log = new Logger(CaffeineCache.class);
+  private static final int FIXED_COST = 8; // Minimum cost in "weight" per entry;
   private final Cache<NamedKey, byte[]> cache;
   private final AtomicReference<CacheStats> priorStats = new AtomicReference<>(null);
 
 
   public static CaffeineCache create(final CaffeineCacheConfig config)
   {
+    return create(config, null);
+  }
+
+  // Used in testing
+  public static CaffeineCache create(final CaffeineCacheConfig config, @Nullable final Executor executor)
+  {
     Caffeine<Object, Object> builder = Caffeine.newBuilder().recordStats();
     if (config.getExpiration() >= 0) {
-      builder = builder
+      builder
           .expireAfterAccess(config.getExpiration(), TimeUnit.MILLISECONDS);
     }
     if (config.getMaxSize() >= 0) {
-      builder = builder
-          .maximumSize(config.getMaxSize())
-          .maximumWeight(config.getMaxSize());
+      builder
+          .maximumWeight(config.getMaxSize())
+          .weigher((NamedKey key, byte[] value) -> value.length
+                                                   + key.key.length
+                                                   + key.namespace.length() * Chars.BYTES
+                                                   + FIXED_COST);
     }
-    return new CaffeineCache(builder.<NamedKey, byte[]>build());
+    if (executor != null) {
+      builder.executor(executor);
+    }
+    return new CaffeineCache(builder.build());
   }
 
   public CaffeineCache(final Cache<NamedKey, byte[]> cache)
@@ -79,7 +95,9 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   @Override
   public Map<NamedKey, byte[]> getBulk(Iterable<NamedKey> keys)
   {
-    return Maps.transformValues(cache.getAllPresent(keys), this::deserialize);
+    // The assumption here is that every value is accessed at least once. Materializing here ensures deserialize is only
+    // called *once* per value.
+    return ImmutableMap.copyOf(Maps.transformValues(cache.getAllPresent(keys), this::deserialize));
   }
 
   // This is completely racy with put. Any values missed should be evicted later anyways. So no worries.

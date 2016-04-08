@@ -40,6 +40,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 public class CaffeineCacheTest
@@ -188,6 +189,41 @@ public class CaffeineCacheTest
 
     result = cache.getBulk(Lists.<Cache.NamedKey>newArrayList());
     Assert.assertEquals(result.size(), 0);
+  }
+
+  @Test
+  public void testSizeEviction()
+  {
+    final CaffeineCacheConfig config = new CaffeineCacheConfig()
+    {
+      @Override
+      public long getMaxSize()
+      {
+        return 40;
+      }
+    };
+    final Random random = new Random(843671346794319L);
+    final byte[] val1 = new byte[14], val2 = new byte[14];
+    final byte[] s1 = new byte[]{0x01}, s2 = new byte[]{0x02};
+    random.nextBytes(val1);
+    random.nextBytes(val2);
+    final Cache.NamedKey key1 = new Cache.NamedKey("the", s1);
+    final Cache.NamedKey key2 = new Cache.NamedKey("the", s2);
+    final Cache cache = CaffeineCache.create(config, Runnable::run);
+
+    Assert.assertNull(cache.get(key1));
+    Assert.assertNull(cache.get(key2));
+
+    cache.put(key1, val1);
+    Assert.assertArrayEquals(val1, cache.get(key1));
+    Assert.assertNull(cache.get(key2));
+
+    Assert.assertArrayEquals(val1, cache.get(key1));
+    Assert.assertNull(cache.get(key2));
+
+    cache.put(key2, val2);
+    Assert.assertNull(cache.get(key1));
+    Assert.assertArrayEquals(val2, cache.get(key2));
   }
 
   public int get(Cache cache, Cache.NamedKey key)
