@@ -24,5 +24,5 @@ The `0.8.3.2` release works with Druid 0.9.0
 
 For the sake of sanity if you are manaully making an extension directory for 0.9.0, the `0.8.3.2` release requires the following jars: 
 
-* caffeine-2.1.0.jar
+* caffeine-2.2.6.jar
 * druid-caffeine-cache-0.8.3.2.jar
