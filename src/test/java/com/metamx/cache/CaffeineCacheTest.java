@@ -226,6 +226,118 @@ public class CaffeineCacheTest
     Assert.assertArrayEquals(val2, cache.get(key2));
   }
 
+  @Test
+  public void testSizeCalculation()
+  {
+    final CaffeineCacheConfig config = new CaffeineCacheConfig()
+    {
+      @Override
+      public long getMaxSize()
+      {
+        return 40;
+      }
+    };
+    final Random random = new Random(843671346794319L);
+    final byte[] val1 = new byte[14], val2 = new byte[14];
+    final byte[] s1 = new byte[]{0x01}, s2 = new byte[]{0x02};
+    random.nextBytes(val1);
+    random.nextBytes(val2);
+    final Cache.NamedKey key1 = new Cache.NamedKey("the", s1);
+    final Cache.NamedKey key2 = new Cache.NamedKey("the", s2);
+    final Cache cache = CaffeineCache.create(config, Runnable::run);
+
+    CacheStats stats = cache.getStats();
+    Assert.assertEquals(0L, stats.getNumEntries());
+    Assert.assertEquals(0L, stats.getSizeInBytes());
+
+    cache.put(key1, val1);
+
+    stats = cache.getStats();
+    Assert.assertEquals(1L, stats.getNumEntries());
+    Assert.assertEquals(34L, stats.getSizeInBytes());
+
+    cache.put(key2, val2);
+
+    stats = cache.getStats();
+    Assert.assertEquals(1L, stats.getNumEntries());
+    Assert.assertEquals(34L, stats.getSizeInBytes());
+  }
+
+
+  @Test
+  public void testSizeCalculationMore()
+  {
+    final CaffeineCacheConfig config = new CaffeineCacheConfig()
+    {
+      @Override
+      public long getMaxSize()
+      {
+        return 400;
+      }
+    };
+    final Random random = new Random(843671346794319L);
+    final byte[] val1 = new byte[14], val2 = new byte[14];
+    final byte[] s1 = new byte[]{0x01}, s2 = new byte[]{0x02};
+    random.nextBytes(val1);
+    random.nextBytes(val2);
+    final Cache.NamedKey key1 = new Cache.NamedKey("the", s1);
+    final Cache.NamedKey key2 = new Cache.NamedKey("the", s2);
+    final Cache cache = CaffeineCache.create(config, Runnable::run);
+
+    CacheStats stats = cache.getStats();
+    Assert.assertEquals(0L, stats.getNumEntries());
+    Assert.assertEquals(0L, stats.getSizeInBytes());
+
+    cache.put(key1, val1);
+
+    stats = cache.getStats();
+    Assert.assertEquals(1L, stats.getNumEntries());
+    Assert.assertEquals(34L, stats.getSizeInBytes());
+
+    cache.put(key2, val2);
+
+    stats = cache.getStats();
+    Assert.assertEquals(2L, stats.getNumEntries());
+    Assert.assertEquals(68L, stats.getSizeInBytes());
+  }
+
+  @Test
+  public void testSizeCalculationNoWeight()
+  {
+    final CaffeineCacheConfig config = new CaffeineCacheConfig()
+    {
+      @Override
+      public long getMaxSize()
+      {
+        return -1;
+      }
+    };
+    final Random random = new Random(843671346794319L);
+    final byte[] val1 = new byte[14], val2 = new byte[14];
+    final byte[] s1 = new byte[]{0x01}, s2 = new byte[]{0x02};
+    random.nextBytes(val1);
+    random.nextBytes(val2);
+    final Cache.NamedKey key1 = new Cache.NamedKey("the", s1);
+    final Cache.NamedKey key2 = new Cache.NamedKey("the", s2);
+    final Cache cache = CaffeineCache.create(config, Runnable::run);
+
+    CacheStats stats = cache.getStats();
+    Assert.assertEquals(0L, stats.getNumEntries());
+    Assert.assertEquals(-1L, stats.getSizeInBytes());
+
+    cache.put(key1, val1);
+
+    stats = cache.getStats();
+    Assert.assertEquals(1L, stats.getNumEntries());
+    Assert.assertEquals(-1L, stats.getSizeInBytes());
+
+    cache.put(key2, val2);
+
+    stats = cache.getStats();
+    Assert.assertEquals(2L, stats.getNumEntries());
+    Assert.assertEquals(-1L, stats.getSizeInBytes());
+  }
+
   public int get(Cache cache, Cache.NamedKey key)
   {
     return Ints.fromByteArray(cache.get(key));

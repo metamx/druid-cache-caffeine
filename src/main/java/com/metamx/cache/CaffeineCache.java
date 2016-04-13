@@ -36,6 +36,7 @@ import net.jpountz.lz4.LZ4FastDecompressor;
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -118,11 +119,15 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   public io.druid.client.cache.CacheStats getStats()
   {
     final com.github.benmanes.caffeine.cache.stats.CacheStats stats = cache.stats();
+    final long size = cache
+        .policy().eviction()
+        .map(eviction -> eviction.isWeighted() ? eviction.weightedSize() : OptionalLong.empty())
+        .orElse(OptionalLong.empty()).orElse(-1);
     return new io.druid.client.cache.CacheStats(
         stats.hitCount(),
         stats.missCount(),
-        stats.loadSuccessCount() - stats.evictionCount(),
         cache.estimatedSize(),
+        size,
         stats.evictionCount(),
         0,
         stats.loadFailureCount()
