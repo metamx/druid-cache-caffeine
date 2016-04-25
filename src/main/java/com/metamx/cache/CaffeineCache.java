@@ -156,6 +156,8 @@ public class CaffeineCache implements io.druid.client.cache.Cache
     emitter.emit(builder.build("query/cache/caffeine/total/requests", newStats.requestCount()));
     emitter.emit(builder.build("query/cache/caffeine/delta/loadTime", deltaStats.totalLoadTime()));
     emitter.emit(builder.build("query/cache/caffeine/total/loadTime", newStats.totalLoadTime()));
+    emitter.emit(builder.build("query/cache/caffeine/delta/evictionWeight", deltaStats.evictionWeight()));
+    emitter.emit(builder.build("query/cache/caffeine/total/evictionWeight", newStats.evictionWeight()));
     if (!priorStats.compareAndSet(oldStats, newStats)) {
       // ISE for stack trace
       log.warn(
@@ -163,6 +165,11 @@ public class CaffeineCache implements io.druid.client.cache.Cache
           "Multiple monitors on the same cache causing race conditions and unreliable stats reporting"
       );
     }
+  }
+
+  Cache<NamedKey, byte[]> getCache()
+  {
+    return cache;
   }
 
   private final LZ4Factory factory = LZ4Factory.fastestInstance();
