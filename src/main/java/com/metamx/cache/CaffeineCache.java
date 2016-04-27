@@ -156,8 +156,8 @@ public class CaffeineCache implements io.druid.client.cache.Cache
     emitter.emit(builder.build("query/cache/caffeine/total/requests", newStats.requestCount()));
     emitter.emit(builder.build("query/cache/caffeine/delta/loadTime", deltaStats.totalLoadTime()));
     emitter.emit(builder.build("query/cache/caffeine/total/loadTime", newStats.totalLoadTime()));
-    emitter.emit(builder.build("query/cache/caffeine/delta/evictionWeight", deltaStats.evictionWeight()));
-    emitter.emit(builder.build("query/cache/caffeine/total/evictionWeight", newStats.evictionWeight()));
+    emitter.emit(builder.build("query/cache/caffeine/delta/evictionBytes", deltaStats.evictionWeight()));
+    emitter.emit(builder.build("query/cache/caffeine/total/evictionBytes", newStats.evictionWeight()));
     if (!priorStats.compareAndSet(oldStats, newStats)) {
       // ISE for stack trace
       log.warn(
