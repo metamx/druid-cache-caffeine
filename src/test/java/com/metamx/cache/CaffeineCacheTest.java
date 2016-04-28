@@ -192,7 +192,7 @@ public class CaffeineCacheTest
   }
 
   @Test
-  public void testSizeEviction()
+  public void testSizeEviction() throws InterruptedException
   {
     final CaffeineCacheConfig config = new CaffeineCacheConfig()
     {
@@ -209,7 +209,7 @@ public class CaffeineCacheTest
     random.nextBytes(val2);
     final Cache.NamedKey key1 = new Cache.NamedKey("the", s1);
     final Cache.NamedKey key2 = new Cache.NamedKey("the", s2);
-    final Cache cache = CaffeineCache.create(config, Runnable::run);
+    final CaffeineCache cache = CaffeineCache.create(config, Runnable::run);
 
     Assert.assertNull(cache.get(key1));
     Assert.assertNull(cache.get(key2));
@@ -218,12 +218,15 @@ public class CaffeineCacheTest
     Assert.assertArrayEquals(val1, cache.get(key1));
     Assert.assertNull(cache.get(key2));
 
+    Assert.assertEquals(0, cache.getCache().stats().evictionWeight());
+
     Assert.assertArrayEquals(val1, cache.get(key1));
     Assert.assertNull(cache.get(key2));
 
     cache.put(key2, val2);
     Assert.assertNull(cache.get(key1));
     Assert.assertArrayEquals(val2, cache.get(key2));
+    Assert.assertEquals(34, cache.getCache().stats().evictionWeight());
   }
 
   @Test
