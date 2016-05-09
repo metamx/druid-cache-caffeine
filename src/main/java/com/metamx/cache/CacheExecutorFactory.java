@@ -19,6 +19,7 @@
 
 package com.metamx.cache;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import io.druid.concurrent.Execs;
 import java.util.concurrent.Executor;
 
@@ -47,4 +48,10 @@ public enum CacheExecutorFactory
   };
 
   public abstract Executor createExecutor();
+
+  @JsonCreator
+  public static CacheExecutorFactory from(String str)
+  {
+    return Enum.valueOf(CacheExecutorFactory.class, str.toUpperCase());
+  }
 }

@@ -333,7 +333,37 @@ public class CaffeineCacheTest
     final Properties properties = new Properties();
     properties.put(keyPrefix + ".expiration", "10");
     properties.put(keyPrefix + ".maxSize", "100");
-    properties.put(keyPrefix + ".cacheExecutorFactory", "COMMON_FJP");
+    properties.put(keyPrefix + ".cacheExecutorFactory", "single_thread");
+    final Injector injector = Initialization.makeInjectorWithModules(
+        GuiceInjectors.makeStartupInjector(),
+        ImmutableList.<Module>of(
+            binder -> {
+              binder.bindConstant().annotatedWith(Names.named("serviceName")).to("druid/test");
+              binder.bindConstant().annotatedWith(Names.named("servicePort")).to(0);
+              JsonConfigProvider.bind(binder, keyPrefix, CaffeineCacheConfig.class);
+            }
+        )
+    );
+    final JsonConfigurator configurator = injector.getInstance(JsonConfigurator.class);
+    final JsonConfigProvider<CaffeineCacheConfig> caffeineCacheConfigJsonConfigProvider = JsonConfigProvider.of(
+        keyPrefix,
+        CaffeineCacheConfig.class
+    );
+    caffeineCacheConfigJsonConfigProvider.inject(properties, configurator);
+    final CaffeineCacheConfig config = caffeineCacheConfigJsonConfigProvider.get().get();
+    Assert.assertEquals(10, config.getExpiration());
+    Assert.assertEquals(100, config.getMaxSize());
+    Assert.assertNotNull(config.createExecutor());
+  }
+
+  @Test
+  public void testMixedCaseFromProperties()
+  {
+    final String keyPrefix = "cache.config.prefix";
+    final Properties properties = new Properties();
+    properties.put(keyPrefix + ".expiration", "10");
+    properties.put(keyPrefix + ".maxSize", "100");
+    properties.put(keyPrefix + ".cacheExecutorFactory", "CoMmON_FjP");
     final Injector injector = Initialization.makeInjectorWithModules(
         GuiceInjectors.makeStartupInjector(),
         ImmutableList.<Module>of(
@@ -355,7 +385,6 @@ public class CaffeineCacheTest
     Assert.assertEquals(100, config.getMaxSize());
     Assert.assertNull(config.createExecutor());
   }
-
 
   @Test
   public void testDefaultFromProperties()
@@ -381,7 +410,7 @@ public class CaffeineCacheTest
     final CaffeineCacheConfig config = caffeineCacheConfigJsonConfigProvider.get().get();
     Assert.assertEquals(-1, config.getExpiration());
     Assert.assertEquals(-1, config.getMaxSize());
-    Assert.assertNotNull(config.createExecutor());
+    Assert.assertNull(config.createExecutor());
   }
 
   public int get(Cache cache, Cache.NamedKey key)

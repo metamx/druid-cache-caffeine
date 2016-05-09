@@ -31,9 +31,9 @@ public class CaffeineCacheConfig
   private long maxSize = -1;
 
   @JsonProperty
-  // Do not use DEFAULT unless you're running 8u60 or higher
+  // Do not use COMMON_FJP unless you're running 8u60 or higher
   // see https://github.com/ben-manes/caffeine/issues/77
-  private CacheExecutorFactory cacheExecutorFactory = CacheExecutorFactory.SINGLE_THREAD;
+  private CacheExecutorFactory cacheExecutorFactory = CacheExecutorFactory.COMMON_FJP;
 
   public long getExpiration()
   {
