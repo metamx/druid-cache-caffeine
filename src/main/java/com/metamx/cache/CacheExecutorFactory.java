@@ -22,29 +22,29 @@ package com.metamx.cache;
 import io.druid.concurrent.Execs;
 import java.util.concurrent.Executor;
 
-public enum CacheExecutor
+public enum CacheExecutorFactory
 {
   DEFAULT {
     @Override
-    public Executor getExecutor()
+    public Executor createExecutor()
     {
       return null;
     }
   },
   SINGLE_THREAD {
     @Override
-    public Executor getExecutor()
+    public Executor createExecutor()
     {
       return Execs.singleThreaded("CaffeineWorker-%s");
     }
   },
   SAME_THREAD {
     @Override
-    public Executor getExecutor()
+    public Executor createExecutor()
     {
       return Runnable::run;
     }
   };
 
-  public abstract Executor getExecutor();
+  public abstract Executor createExecutor();
 }

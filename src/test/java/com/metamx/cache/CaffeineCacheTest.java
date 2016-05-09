@@ -333,7 +333,7 @@ public class CaffeineCacheTest
     final Properties properties = new Properties();
     properties.put(keyPrefix + ".expiration", "10");
     properties.put(keyPrefix + ".maxSize", "100");
-    properties.put(keyPrefix + ".cacheExecutor", "DEFAULT");
+    properties.put(keyPrefix + ".cacheExecutorFactory", "DEFAULT");
     final Injector injector = Initialization.makeInjectorWithModules(
         GuiceInjectors.makeStartupInjector(),
         ImmutableList.<Module>of(
@@ -353,7 +353,7 @@ public class CaffeineCacheTest
     final CaffeineCacheConfig config = caffeineCacheConfigJsonConfigProvider.get().get();
     Assert.assertEquals(10, config.getExpiration());
     Assert.assertEquals(100, config.getMaxSize());
-    Assert.assertNull(config.getExecutor());
+    Assert.assertNull(config.createExecutor());
   }
 
 
@@ -381,7 +381,7 @@ public class CaffeineCacheTest
     final CaffeineCacheConfig config = caffeineCacheConfigJsonConfigProvider.get().get();
     Assert.assertEquals(-1, config.getExpiration());
     Assert.assertEquals(-1, config.getMaxSize());
-    Assert.assertNotNull(config.getExecutor());
+    Assert.assertNotNull(config.createExecutor());
   }
 
   public int get(Cache cache, Cache.NamedKey key)

@@ -50,7 +50,7 @@ public class CaffeineCache implements io.druid.client.cache.Cache
 
   public static CaffeineCache create(final CaffeineCacheConfig config)
   {
-    return create(config, config.getExecutor());
+    return create(config, config.createExecutor());
   }
 
   // Used in testing

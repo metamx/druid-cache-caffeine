@@ -33,7 +33,7 @@ public class CaffeineCacheConfig
   @JsonProperty
   // Do not use DEFAULT unless you're running 8u60 or higher
   // see https://github.com/ben-manes/caffeine/issues/77
-  private CacheExecutor cacheExecutor = CacheExecutor.SINGLE_THREAD;
+  private CacheExecutorFactory cacheExecutorFactory = CacheExecutorFactory.SINGLE_THREAD;
 
   public long getExpiration()
   {
@@ -45,8 +45,8 @@ public class CaffeineCacheConfig
     return maxSize;
   }
 
-  public Executor getExecutor()
+  public Executor createExecutor()
   {
-    return cacheExecutor.getExecutor();
+    return cacheExecutorFactory.createExecutor();
   }
 }
