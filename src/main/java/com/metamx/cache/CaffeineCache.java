@@ -46,6 +46,7 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   private static final int FIXED_COST = 8; // Minimum cost in "weight" per entry;
   private final Cache<NamedKey, byte[]> cache;
   private final AtomicReference<CacheStats> priorStats = new AtomicReference<>(null);
+  private final CaffeineCacheConfig config;
 
 
   public static CaffeineCache create(final CaffeineCacheConfig config)
@@ -72,12 +73,13 @@ public class CaffeineCache implements io.druid.client.cache.Cache
     if (executor != null) {
       builder.executor(executor);
     }
-    return new CaffeineCache(builder.build());
+    return new CaffeineCache(builder.build(), config);
   }
 
-  public CaffeineCache(final Cache<NamedKey, byte[]> cache)
+  public CaffeineCache(final Cache<NamedKey, byte[]> cache, CaffeineCacheConfig config)
   {
     this.cache = cache;
+    this.config = config;
   }
 
   @Override
@@ -104,14 +106,9 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   @Override
   public void close(String namespace)
   {
-    /***** Let LRU take care of cache invalidation
-     final String keyPrefix = computeNamespaceHash(namespace) + ":";
-     for (String key : cache.asMap().keySet()) {
-     if (key.startsWith(keyPrefix)) {
-     cache.invalidate(key);
-     }
-     }
-     */
+    if (config.isEvictOnClose()) {
+      cache.asMap().keySet().stream().filter(key -> key.namespace.equals(namespace)).forEach(cache::invalidate);
+    }
   }
 
   @Override
