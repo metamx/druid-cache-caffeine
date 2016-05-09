@@ -58,13 +58,13 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   public static CaffeineCache create(final CaffeineCacheConfig config, @Nullable final Executor executor)
   {
     Caffeine<Object, Object> builder = Caffeine.newBuilder().recordStats();
-    if (config.getExpiration() >= 0) {
+    if (config.getExpireAfter() >= 0) {
       builder
-          .expireAfterAccess(config.getExpiration(), TimeUnit.MILLISECONDS);
+          .expireAfterAccess(config.getExpireAfter(), TimeUnit.MILLISECONDS);
     }
-    if (config.getMaxSize() >= 0) {
+    if (config.getSizeInBytes() >= 0) {
       builder
-          .maximumWeight(config.getMaxSize())
+          .maximumWeight(config.getSizeInBytes())
           .weigher((NamedKey key, byte[] value) -> value.length
                                                    + key.key.length
                                                    + key.namespace.length() * Chars.BYTES

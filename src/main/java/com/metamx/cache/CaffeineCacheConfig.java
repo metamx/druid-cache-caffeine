@@ -25,10 +25,10 @@ import java.util.concurrent.Executor;
 public class CaffeineCacheConfig
 {
   @JsonProperty
-  private long expiration = -1;
+  private long expireAfter = -1;
 
   @JsonProperty
-  private long maxSize = -1;
+  private long sizeInBytes = -1;
 
   @JsonProperty
   // Do not use COMMON_FJP unless you're running 8u60 or higher
@@ -38,14 +38,14 @@ public class CaffeineCacheConfig
   @JsonProperty
   private boolean evictOnClose = false;
 
-  public long getExpiration()
+  public long getExpireAfter()
   {
-    return expiration;
+    return expireAfter;
   }
 
-  public long getMaxSize()
+  public long getSizeInBytes()
   {
-    return maxSize;
+    return sizeInBytes;
   }
 
   public Executor createExecutor()
