@@ -33,15 +33,16 @@ import io.druid.client.cache.CacheProvider;
 import io.druid.client.cache.CacheStats;
 import io.druid.guice.GuiceInjectors;
 import io.druid.guice.JsonConfigProvider;
+import io.druid.guice.JsonConfigurator;
 import io.druid.guice.ManageLifecycle;
 import io.druid.initialization.Initialization;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
 
 public class CaffeineCacheTest
 {
@@ -49,23 +50,7 @@ public class CaffeineCacheTest
   private static final byte[] HO = "hooooooooooooooooooo".getBytes();
 
   private CaffeineCache cache;
-  private final CaffeineCacheConfig cacheConfig = new CaffeineCacheConfig()
-  {
-    public int getPoolSize()
-    {
-      return 1;
-    }
-
-    public String getPrefix()
-    {
-      return "druid";
-    }
-
-    public long getExpiration()
-    {
-      return -1;
-    }
-  };
+  private final CaffeineCacheConfig cacheConfig = new CaffeineCacheConfig();
 
   @Before
   public void setUp() throws Exception
@@ -339,6 +324,64 @@ public class CaffeineCacheTest
     stats = cache.getStats();
     Assert.assertEquals(2L, stats.getNumEntries());
     Assert.assertEquals(-1L, stats.getSizeInBytes());
+  }
+
+  @Test
+  public void testFromProperties()
+  {
+    final String keyPrefix = "cache.config.prefix";
+    final Properties properties = new Properties();
+    properties.put(keyPrefix + ".expiration", "10");
+    properties.put(keyPrefix + ".maxSize", "100");
+    properties.put(keyPrefix + ".cacheExecutor", "DEFAULT");
+    final Injector injector = Initialization.makeInjectorWithModules(
+        GuiceInjectors.makeStartupInjector(),
+        ImmutableList.<Module>of(
+            binder -> {
+              binder.bindConstant().annotatedWith(Names.named("serviceName")).to("druid/test");
+              binder.bindConstant().annotatedWith(Names.named("servicePort")).to(0);
+              JsonConfigProvider.bind(binder, keyPrefix, CaffeineCacheConfig.class);
+            }
+        )
+    );
+    final JsonConfigurator configurator = injector.getInstance(JsonConfigurator.class);
+    final JsonConfigProvider<CaffeineCacheConfig> caffeineCacheConfigJsonConfigProvider = JsonConfigProvider.of(
+        keyPrefix,
+        CaffeineCacheConfig.class
+    );
+    caffeineCacheConfigJsonConfigProvider.inject(properties, configurator);
+    final CaffeineCacheConfig config = caffeineCacheConfigJsonConfigProvider.get().get();
+    Assert.assertEquals(10, config.getExpiration());
+    Assert.assertEquals(100, config.getMaxSize());
+    Assert.assertNull(config.getExecutor());
+  }
+
+
+  @Test
+  public void testDefaultFromProperties()
+  {
+    final String keyPrefix = "cache.config.prefix";
+    final Properties properties = new Properties();
+    final Injector injector = Initialization.makeInjectorWithModules(
+        GuiceInjectors.makeStartupInjector(),
+        ImmutableList.<Module>of(
+            binder -> {
+              binder.bindConstant().annotatedWith(Names.named("serviceName")).to("druid/test");
+              binder.bindConstant().annotatedWith(Names.named("servicePort")).to(0);
+              JsonConfigProvider.bind(binder, keyPrefix, CaffeineCacheConfig.class);
+            }
+        )
+    );
+    final JsonConfigurator configurator = injector.getInstance(JsonConfigurator.class);
+    final JsonConfigProvider<CaffeineCacheConfig> caffeineCacheConfigJsonConfigProvider = JsonConfigProvider.of(
+        keyPrefix,
+        CaffeineCacheConfig.class
+    );
+    caffeineCacheConfigJsonConfigProvider.inject(properties, configurator);
+    final CaffeineCacheConfig config = caffeineCacheConfigJsonConfigProvider.get().get();
+    Assert.assertEquals(-1, config.getExpiration());
+    Assert.assertEquals(-1, config.getMaxSize());
+    Assert.assertNotNull(config.getExecutor());
   }
 
   public int get(Cache cache, Cache.NamedKey key)

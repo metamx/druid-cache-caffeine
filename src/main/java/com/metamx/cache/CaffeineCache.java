@@ -29,17 +29,16 @@ import com.google.common.primitives.Ints;
 import com.metamx.common.logger.Logger;
 import com.metamx.emitter.service.ServiceEmitter;
 import com.metamx.emitter.service.ServiceMetricEvent;
-import net.jpountz.lz4.LZ4Compressor;
-import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.lz4.LZ4FastDecompressor;
-
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
 
 public class CaffeineCache implements io.druid.client.cache.Cache
 {
@@ -51,7 +50,7 @@ public class CaffeineCache implements io.druid.client.cache.Cache
 
   public static CaffeineCache create(final CaffeineCacheConfig config)
   {
-    return create(config, null);
+    return create(config, config.getExecutor());
   }
 
   // Used in testing

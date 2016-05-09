@@ -20,6 +20,7 @@
 package com.metamx.cache;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.concurrent.Executor;
 
 public class CaffeineCacheConfig
 {
@@ -29,6 +30,11 @@ public class CaffeineCacheConfig
   @JsonProperty
   private long maxSize = -1;
 
+  @JsonProperty
+  // Do not use DEFAULT unless you're running 8u60 or higher
+  // see https://github.com/ben-manes/caffeine/issues/77
+  private CacheExecutor cacheExecutor = CacheExecutor.SINGLE_THREAD;
+
   public long getExpiration()
   {
     return expiration;
@@ -37,5 +43,10 @@ public class CaffeineCacheConfig
   public long getMaxSize()
   {
     return maxSize;
+  }
+
+  public Executor getExecutor()
+  {
+    return cacheExecutor.getExecutor();
   }
 }
