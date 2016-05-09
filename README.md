@@ -1,7 +1,7 @@
 Druid Caffeine Cache
 --------------------
 
-A local cache implementation for Druid based on Caffeine
+A local cache implementation for Druid based on Caffeine. Requires a JRE with a fix for https://bugs.openjdk.java.net/browse/JDK-8078490
 
 # Versioning
 
