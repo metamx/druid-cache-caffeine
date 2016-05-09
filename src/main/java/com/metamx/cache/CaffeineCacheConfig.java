@@ -35,6 +35,9 @@ public class CaffeineCacheConfig
   // see https://github.com/ben-manes/caffeine/issues/77
   private CacheExecutorFactory cacheExecutorFactory = CacheExecutorFactory.COMMON_FJP;
 
+  @JsonProperty
+  private boolean evictOnClose = false;
+
   public long getExpiration()
   {
     return expiration;
@@ -48,5 +51,10 @@ public class CaffeineCacheConfig
   public Executor createExecutor()
   {
     return cacheExecutorFactory.createExecutor();
+  }
+
+  public boolean isEvictOnClose()
+  {
+    return evictOnClose;
   }
 }
