@@ -333,7 +333,7 @@ public class CaffeineCacheTest
     final Properties properties = new Properties();
     properties.put(keyPrefix + ".expiration", "10");
     properties.put(keyPrefix + ".maxSize", "100");
-    properties.put(keyPrefix + ".cacheExecutorFactory", "DEFAULT");
+    properties.put(keyPrefix + ".cacheExecutorFactory", "COMMON_FJP");
     final Injector injector = Initialization.makeInjectorWithModules(
         GuiceInjectors.makeStartupInjector(),
         ImmutableList.<Module>of(

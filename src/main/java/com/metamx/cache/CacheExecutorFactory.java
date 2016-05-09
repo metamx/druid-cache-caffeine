@@ -24,7 +24,7 @@ import java.util.concurrent.Executor;
 
 public enum CacheExecutorFactory
 {
-  DEFAULT {
+  COMMON_FJP {
     @Override
     public Executor createExecutor()
     {
