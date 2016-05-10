@@ -107,7 +107,7 @@ public class CaffeineCache implements io.druid.client.cache.Cache
   public void close(String namespace)
   {
     if (config.isEvictOnClose()) {
-      cache.asMap().keySet().stream().filter(key -> key.namespace.equals(namespace)).forEach(cache::invalidate);
+      cache.asMap().keySet().removeIf(key -> key.namespace.equals(namespace));
     }
   }
 
