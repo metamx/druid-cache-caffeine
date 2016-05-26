@@ -1,6 +1,8 @@
 Druid Caffeine Cache
 --------------------
 
+**THIS IS MOVING TO DRUID.IO AS PER** https://github.com/druid-io/druid/pull/3028
+
 A local cache implementation for Druid based on Caffeine. Requires a JRE with a fix for https://bugs.openjdk.java.net/browse/JDK-8078490
 
 # Versioning
